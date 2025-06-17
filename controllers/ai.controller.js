@@ -46,24 +46,29 @@ export const handleConversation = async (req, res) => {
     const defaultVoiceId = voices.voices[0].voiceId;
 
     // Convert text to speech
-    const audio = await elevenlabs.textToSpeech.convert(defaultVoiceId, {
-      text: aiResponse,
-    });
+    try {
+      const audio = await elevenlabs.textToSpeech.convert(defaultVoiceId, {
+        text: aiResponse,
+      });
 
-    const stream = Readable.from(audio);
-    const chunks = [];
-    for await (const chunk of stream) {
-      chunks.push(chunk);
+      const stream = Readable.from(audio);
+      const chunks = [];
+      for await (const chunk of stream) {
+        chunks.push(chunk);
+      }
+      const buffer = Buffer.concat(chunks);
+
+      // Encode buffer to base64
+      const audioBase64 = buffer.toString("base64");
+
+      res.json({
+        text: aiResponse,
+        audio: `data:audio/mpeg;base64,${audioBase64}`,
+      });
+    } catch (convertErr) {
+      console.error("Text-to-speech failed:", convertErr);
+      return res.status(500).json({ message: "TTS conversion failed" });
     }
-    const buffer = Buffer.concat(chunks);
-
-    // Encode buffer to base64
-    const audioBase64 = buffer.toString("base64");
-
-    res.json({
-      text: aiResponse,
-      audio: `data:audio/mpeg;base64,${audioBase64}`,
-    });
   } catch (error) {
     console.error("Error in conversation:", error);
     res.status(error.response?.status || 500).json({
