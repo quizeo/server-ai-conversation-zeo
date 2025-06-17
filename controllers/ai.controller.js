@@ -51,23 +51,23 @@ export const handleConversation = async (req, res) => {
 
     const defaultVoiceId = voices.voices[0].voiceId;
 
-    // ✅ Convert AI response to speech
-    const audioStream = await elevenlabs.textToSpeech.convert(defaultVoiceId, {
-      text: aiResponse,
-      modelId: "eleven_multilingual_v2",
-      outputFormat: "mp3_44100_128",
+    const audioResponse = await axios({
+      method: "post",
+      url: `https://api.elevenlabs.io/v1/text-to-speech/${defaultVoiceId}`,
+      headers: {
+        "xi-api-key": process.env.ELEVENLABS_API_KEY,
+        "Content-Type": "application/json",
+        Accept: "audio/mpeg",
+      },
+      data: {
+        text: aiResponse,
+        model_id: "eleven_multilingual_v2",
+        output_format: "mp3_44100_128",
+      },
+      responseType: "arraybuffer",
     });
 
-    // ✅ Stream to base64
-    const stream = Readable.from(audioStream);
-    const chunks = [];
-
-    for await (const chunk of stream) {
-      chunks.push(chunk);
-    }
-
-    const buffer = Buffer.concat(chunks);
-    const audioBase64 = buffer.toString("base64");
+    const audioBase64 = Buffer.from(audioResponse.data).toString("base64");
 
     // ✅ Send response
     res.json({
