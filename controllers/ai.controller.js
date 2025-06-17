@@ -40,7 +40,7 @@ export const handleConversation = async (req, res) => {
 
     // Convert text to speech
     const audio = await elevenlabs.textToSpeech.convert(
-      "WZlYpi1yf6zJhNWXih74",
+      "onwK4e9ZLuTAKqWW03F9",
       {
         text: aiResponse,
         modelId: "eleven_multilingual_v2",
