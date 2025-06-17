@@ -1,6 +1,6 @@
 import axios from "axios";
 import dotenv from "dotenv";
-import { ElevenLabsClient, play } from '@elevenlabs/elevenlabs-js';
+import { ElevenLabsClient, play } from "@elevenlabs/elevenlabs-js";
 dotenv.config();
 import { Readable } from "stream";
 
@@ -18,55 +18,53 @@ export const handleConversation = async (req, res) => {
         model: "deepseek/deepseek-r1",
         messages: [{ role: "user", content: prompt }],
         provider: {
-          sort: "throughput"
-        }
+          sort: "throughput",
+        },
       },
       {
         headers: {
-          "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
           "Content-Type": "application/json",
         },
       }
     );
 
     const aiResponse = openRouterResponse.data.choices[0].message.content;
-
+    console.log("Using API Key:", process.env.ELEVENLABS_API_KEY);
     const elevenlabs = new ElevenLabsClient({
       apiKey: process.env.ELEVENLABS_API_KEY, // Make sure this is set in your .env file
     });
 
-       // Convert text to speech
-       const audio = await elevenlabs.textToSpeech.convert('JBFqnCBsd6RMkjVDRZzb', {
+    // Convert text to speech
+    const audio = await elevenlabs.textToSpeech.convert(
+      "JBFqnCBsd6RMkjVDRZzb",
+      {
         text: aiResponse,
-        modelId: 'eleven_multilingual_v2',
-        outputFormat: 'mp3_44100_128',
-      });
-
-      const stream = Readable.from(audio);
-      const chunks = [];
-      for await (const chunk of stream) {
-        chunks.push(chunk);
+        modelId: "eleven_multilingual_v2",
+        outputFormat: "mp3_44100_128",
       }
-      const buffer = Buffer.concat(chunks);
-  
-      // Encode buffer to base64
-      const audioBase64 = buffer.toString("base64");
+    );
 
+    const stream = Readable.from(audio);
+    const chunks = [];
+    for await (const chunk of stream) {
+      chunks.push(chunk);
+    }
+    const buffer = Buffer.concat(chunks);
 
+    // Encode buffer to base64
+    const audioBase64 = buffer.toString("base64");
 
-
-     
     res.json({
       text: aiResponse,
-     audio: `data:audio/mpeg;base64,${audioBase64}`
+      audio: `data:audio/mpeg;base64,${audioBase64}`,
     });
-
   } catch (error) {
     console.error("Error in conversation:", error);
     res.status(error.response?.status || 500).json({
       message: "Error processing conversation",
       error: error.message,
-      details: error.response?.data || error
+      details: error.response?.data || error,
     });
   }
 };
