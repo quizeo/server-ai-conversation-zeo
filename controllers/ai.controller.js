@@ -1,7 +1,6 @@
 import axios from "axios";
 import dotenv from "dotenv";
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
-import { Readable } from "stream";
 
 // Load environment variables
 dotenv.config();
@@ -13,15 +12,15 @@ export const handleConversation = async (req, res) => {
       return res.status(400).json({ message: "Prompt is required" });
     }
 
-    // ✅ Validate ElevenLabs API Key
+    // Validate required environment variables
     const elevenlabsApiKey = process.env.ELEVENLABS_API_KEY;
-    if (!elevenlabsApiKey) {
-      return res
-        .status(500)
-        .json({ message: "Missing ElevenLabs API key in environment." });
+    const openRouterApiKey = process.env.OPENROUTER_API_KEY;
+
+    if (!elevenlabsApiKey || !openRouterApiKey) {
+      return res.status(500).json({ message: "Missing required API keys." });
     }
 
-    // ✅ Call DeepSeek model using OpenRouter
+    // 🧠 Call DeepSeek model via OpenRouter
     const openRouterResponse = await axios.post(
       "https://openrouter.ai/api/v1/chat/completions",
       {
@@ -30,32 +29,34 @@ export const handleConversation = async (req, res) => {
       },
       {
         headers: {
-          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          Authorization: `Bearer ${openRouterApiKey}`,
           "Content-Type": "application/json",
         },
       }
     );
 
-    const aiResponse = openRouterResponse.data.choices[0].message.content;
+    const aiResponse = openRouterResponse.data.choices[0]?.message?.content;
+    if (!aiResponse) {
+      return res.status(500).json({ message: "No response from DeepSeek." });
+    }
 
-    // ✅ Initialize ElevenLabs Client
-    const elevenlabs = new ElevenLabsClient({
-      apiKey: elevenlabsApiKey,
-    });
+    // 🎤 Initialize ElevenLabs client
+    const elevenlabs = new ElevenLabsClient({ apiKey: elevenlabsApiKey });
 
-    // ✅ Get available voices
+    // Fetch available voices
     const voices = await elevenlabs.voices.getAll();
-    if (!voices.voices?.length) {
+    if (!voices?.voices?.length) {
       return res.status(500).json({ message: "No voices available." });
     }
 
     const defaultVoiceId = voices.voices[0].voiceId;
 
+    // 🎧 Convert AI response to speech
     const audioResponse = await axios({
       method: "post",
       url: `https://api.elevenlabs.io/v1/text-to-speech/${defaultVoiceId}`,
       headers: {
-        "xi-api-key": "sk_ec66089354d83a7d3ea83e194aa55ed15b7591f3beb87d7e",
+        "xi-api-key": elevenlabsApiKey,
         "Content-Type": "application/json",
         Accept: "audio/mpeg",
       },
@@ -67,9 +68,10 @@ export const handleConversation = async (req, res) => {
       responseType: "arraybuffer",
     });
 
+    // 🔊 Encode audio to base64
     const audioBase64 = Buffer.from(audioResponse.data).toString("base64");
 
-    // ✅ Send response
+    // 📤 Respond to frontend
     res.json({
       text: aiResponse,
       audio: `data:audio/mpeg;base64,${audioBase64}`,
