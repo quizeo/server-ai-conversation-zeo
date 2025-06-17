@@ -14,12 +14,10 @@ const app = express();
 // };
 
 const corsOptions = {
-  origin:
-    process.env.NODE_ENV === "production"
-      ? ["https://your-frontend-domain.com"] // Add your actual frontend domain(s)
-      : "http://localhost:5173", // For local development
-  methods: ["GET", "POST", "DELETE", "PUT", "OPTIONS"],
-  credentials: true, // Can be true with specific origins
+  origin: ["http://localhost:5173", "https://your-frontend-domain.com"],
+  methods: ["GET", "POST"],
+  allowedHeaders: ["Content-Type"],
+  credentials: true,
 };
 // Middleware
 app.use(cors(corsOptions));
