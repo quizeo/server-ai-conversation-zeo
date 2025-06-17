@@ -36,15 +36,13 @@ export const handleConversation = async (req, res) => {
     });
 
     const voices = await elevenlabs.voices.getAll();
-    console.log("Available voices:", voices);
+    console.log("Available voices:", voices.voices[0].voiceId);
+    const defaultVoiceId = voices.voices[0].voiceId;
 
     // Convert text to speech
-    const audio = await elevenlabs.textToSpeech.convert(
-      "onwK4e9ZLuTAKqWW03F9",
-      {
-        text: aiResponse,
-      }
-    );
+    const audio = await elevenlabs.textToSpeech.convert(defaultVoiceId, {
+      text: aiResponse,
+    });
 
     const stream = Readable.from(audio);
     const chunks = [];
