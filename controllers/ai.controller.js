@@ -1,8 +1,10 @@
 import axios from "axios";
 import dotenv from "dotenv";
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
-dotenv.config();
 import { Readable } from "stream";
+
+// Load environment variables
+dotenv.config();
 
 export const handleConversation = async (req, res) => {
   try {
@@ -11,15 +13,20 @@ export const handleConversation = async (req, res) => {
       return res.status(400).json({ message: "Prompt is required" });
     }
 
-    // Call DeepSeek via OpenRouter
+    // ✅ Validate ElevenLabs API Key
+    const elevenlabsApiKey = process.env.ELEVENLABS_API_KEY;
+    if (!elevenlabsApiKey) {
+      return res
+        .status(500)
+        .json({ message: "Missing ElevenLabs API key in environment." });
+    }
+
+    // ✅ Call DeepSeek model using OpenRouter
     const openRouterResponse = await axios.post(
       "https://openrouter.ai/api/v1/chat/completions",
       {
         model: "deepseek/deepseek-r1",
         messages: [{ role: "user", content: prompt }],
-        provider: {
-          sort: "throughput",
-        },
       },
       {
         headers: {
@@ -30,49 +37,48 @@ export const handleConversation = async (req, res) => {
     );
 
     const aiResponse = openRouterResponse.data.choices[0].message.content;
-    console.log("Using API Key:", process.env.ELEVENLABS_API_KEY);
+
+    // ✅ Initialize ElevenLabs Client
     const elevenlabs = new ElevenLabsClient({
-      apiKey: process.env.ELEVENLABS_API_KEY, // Make sure this is set in your .env file
+      apiKey: elevenlabsApiKey,
     });
 
+    // ✅ Get available voices
     const voices = await elevenlabs.voices.getAll();
-    console.log("Available voices:", voices.voices[0].voiceId);
-
-    if (!voices || !voices.voices || voices.voices.length === 0) {
-      return res
-        .status(500)
-        .json({ message: "No voices available for this API key." });
+    if (!voices.voices?.length) {
+      return res.status(500).json({ message: "No voices available." });
     }
+
     const defaultVoiceId = voices.voices[0].voiceId;
 
-    // Convert text to speech
-    try {
-      const audio = await elevenlabs.textToSpeech.convert(defaultVoiceId, {
-        text: aiResponse,
-      });
+    // ✅ Convert AI response to speech
+    const audioStream = await elevenlabs.textToSpeech.convert(defaultVoiceId, {
+      text: aiResponse,
+      modelId: "eleven_multilingual_v2",
+      outputFormat: "mp3_44100_128",
+    });
 
-      const stream = Readable.from(audio);
-      const chunks = [];
-      for await (const chunk of stream) {
-        chunks.push(chunk);
-      }
-      const buffer = Buffer.concat(chunks);
+    // ✅ Stream to base64
+    const stream = Readable.from(audioStream);
+    const chunks = [];
 
-      // Encode buffer to base64
-      const audioBase64 = buffer.toString("base64");
-
-      res.json({
-        text: aiResponse,
-        audio: `data:audio/mpeg;base64,${audioBase64}`,
-      });
-    } catch (convertErr) {
-      console.error("Text-to-speech failed:", convertErr);
-      return res.status(500).json({ message: "TTS conversion failed" });
+    for await (const chunk of stream) {
+      chunks.push(chunk);
     }
+
+    const buffer = Buffer.concat(chunks);
+    const audioBase64 = buffer.toString("base64");
+
+    // ✅ Send response
+    res.json({
+      text: aiResponse,
+      audio: `data:audio/mpeg;base64,${audioBase64}`,
+    });
   } catch (error) {
-    console.error("Error in conversation:", error);
-    res.status(error.response?.status || 500).json({
-      message: "Error processing conversation",
+    console.error("❌ Error in conversation:", error);
+
+    return res.status(error?.response?.status || 500).json({
+      message: "Something went wrong during processing",
       error: error.message,
       details: error.response?.data || error,
     });
