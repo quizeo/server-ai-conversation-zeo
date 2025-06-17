@@ -55,7 +55,7 @@ export const handleConversation = async (req, res) => {
       method: "post",
       url: `https://api.elevenlabs.io/v1/text-to-speech/${defaultVoiceId}`,
       headers: {
-        "xi-api-key": process.env.ELEVENLABS_API_KEY,
+        "xi-api-key": "sk_ec66089354d83a7d3ea83e194aa55ed15b7591f3beb87d7e",
         "Content-Type": "application/json",
         Accept: "audio/mpeg",
       },
