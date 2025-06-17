@@ -37,6 +37,12 @@ export const handleConversation = async (req, res) => {
 
     const voices = await elevenlabs.voices.getAll();
     console.log("Available voices:", voices.voices[0].voiceId);
+
+    if (!voices || !voices.voices || voices.voices.length === 0) {
+      return res
+        .status(500)
+        .json({ message: "No voices available for this API key." });
+    }
     const defaultVoiceId = voices.voices[0].voiceId;
 
     // Convert text to speech
