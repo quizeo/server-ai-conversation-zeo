@@ -43,8 +43,6 @@ export const handleConversation = async (req, res) => {
       "onwK4e9ZLuTAKqWW03F9",
       {
         text: aiResponse,
-        modelId: "eleven_multilingual_v2",
-        outputFormat: "mp3_44100_128",
       }
     );
 
