@@ -7,10 +7,19 @@ import aiRoutes from "./routes/ai.routes.js";
 dotenv.config();
 
 const app = express();
+// const corsOptions = {
+//   origin: "*", // Allow all origins (for testing only)
+//   methods: ["GET", "POST", "DELETE", "PUT", "OPTIONS"],
+//   credentials: false, // Must be false when using "*" origin
+// };
+
 const corsOptions = {
-  origin: "*", // Allow all origins (for testing only)
+  origin:
+    process.env.NODE_ENV === "production"
+      ? ["https://your-frontend-domain.com"] // Add your actual frontend domain(s)
+      : "http://localhost:5173", // For local development
   methods: ["GET", "POST", "DELETE", "PUT", "OPTIONS"],
-  credentials: false, // Must be false when using "*" origin
+  credentials: true, // Can be true with specific origins
 };
 // Middleware
 app.use(cors(corsOptions));

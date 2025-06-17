@@ -1,6 +1,6 @@
 import axios from "axios";
 import dotenv from "dotenv";
-import { ElevenLabsClient, play } from "@elevenlabs/elevenlabs-js";
+import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 dotenv.config();
 import { Readable } from "stream";
 
