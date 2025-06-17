@@ -31,10 +31,12 @@ export const handleConversation = async (req, res) => {
 
     const aiResponse = openRouterResponse.data.choices[0].message.content;
     console.log("Using API Key:", process.env.ELEVENLABS_API_KEY);
-
     const elevenlabs = new ElevenLabsClient({
-      apiKey: "sk_ec66089354d83a7d3ea83e194aa55ed15b7591f3beb87d7e", // Make sure this is set in your .env file
+      apiKey: process.env.ELEVENLABS_API_KEY, // Make sure this is set in your .env file
     });
+
+    const voices = await elevenlabs.voices.getAll();
+    console.log("Available voices:", voices);
 
     // Convert text to speech
     const audio = await elevenlabs.textToSpeech.convert(
