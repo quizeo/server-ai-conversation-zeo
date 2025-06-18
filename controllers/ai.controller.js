@@ -49,7 +49,7 @@ export const handleConversation = async (req, res) => {
       }
     );
 
-    console.log("Available voices:", response.data);
+    // console.log("Available voices:", response.data);
 
     const ttsResponse = await axios.post(
       "https://api.allvoicelab.com/v1/text-to-speech/create",
