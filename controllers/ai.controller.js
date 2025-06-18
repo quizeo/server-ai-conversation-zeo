@@ -57,6 +57,8 @@ export const handleConversation = async (req, res) => {
       apiKey: process.env.ELEVENLABS_API_KEY, // Make sure this is set in your .env file
     });
 
+    console.log(process.env.ELEVENLABS_API_KEY);
+
     const voices = await elevenlabs.voices.getAll();
     console.log("Available voices:", voices.voices[0].voiceId);
 
