@@ -16,7 +16,7 @@ const app = express();
 const corsOptions = {
   origin: [
     "http://localhost:5173",
-    "https://server-ai-conversation-zeo.vercel.app/",
+    "https://server-ai-conversation-zeo.vercel.app",
   ],
   methods: ["GET", "POST"],
   allowedHeaders: ["Content-Type"],
