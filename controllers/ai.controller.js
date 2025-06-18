@@ -1,6 +1,7 @@
 import axios from "axios";
 import dotenv from "dotenv";
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
+import { Readable } from "stream";
 
 // Load environment variables
 dotenv.config();
@@ -13,11 +14,9 @@ export const handleConversation = async (req, res) => {
     }
 
     // Validate required environment variables
-    const elevenlabsApiKey = process.env.ELEVENLABS_API_KEY;
     const openRouterApiKey = process.env.OPENROUTER_API_KEY;
-
-    if (!elevenlabsApiKey || !openRouterApiKey) {
-      return res.status(500).json({ message: "Missing required API keys." });
+    if (!openRouterApiKey) {
+      return res.status(500).json({ message: "Missing OpenRouter API key." });
     }
 
     // 🧠 Call DeepSeek model via OpenRouter
@@ -40,41 +39,39 @@ export const handleConversation = async (req, res) => {
       return res.status(500).json({ message: "No response from DeepSeek." });
     }
 
-    // 🎤 Initialize ElevenLabs client
-    const elevenlabs = new ElevenLabsClient({ apiKey: elevenlabsApiKey });
-
-    // Fetch available voices
-    const voices = await elevenlabs.voices.getAll();
-    if (!voices?.voices?.length) {
-      return res.status(500).json({ message: "No voices available." });
-    }
-
-    const defaultVoiceId = voices.voices[0].voiceId;
-
-    // 🎧 Convert AI response to speech
-    const audioResponse = await axios({
-      method: "post",
-      url: `https://api.elevenlabs.io/v1/text-to-speech/${defaultVoiceId}`,
-      headers: {
-        "xi-api-key": elevenlabsApiKey,
-        "Content-Type": "application/json",
-        Accept: "audio/mpeg",
-      },
-      data: {
-        text: aiResponse,
-        model_id: "eleven_multilingual_v2",
-        output_format: "mp3_44100_128",
-      },
-      responseType: "arraybuffer",
+    const elevenlabs = new ElevenLabsClient({
+      apiKey: process.env.ELEVENLABS_API_KEY, // Make sure this is set in your .env file
     });
 
-    // // 🔊 Encode audio to base64
-    // const audioBase64 = Buffer.from(audioResponse.data).toString("base64");
+    const voices = await elevenlabs.voices.getAll();
+    console.log("Available voices:", voices.voices[0].voiceId);
+
+    if (!voices || !voices.voices || voices.voices.length === 0) {
+      return res
+        .status(500)
+        .json({ message: "No voices available for this API key." });
+    }
+    const defaultVoiceId = voices.voices[0].voiceId;
+
+    // 🗣️ Convert response text to speech using TTSMaker
+    const audio = await elevenlabs.textToSpeech.convert(defaultVoiceId, {
+      text: aiResponse,
+    });
+
+    const stream = Readable.from(audio);
+    const chunks = [];
+    for await (const chunk of stream) {
+      chunks.push(chunk);
+    }
+    const buffer = Buffer.concat(chunks);
+
+    // Encode buffer to base64
+    const audioBase64 = buffer.toString("base64");
 
     // 📤 Respond to frontend
     res.json({
       text: aiResponse,
-      audio: null,
+      audio: `data:audio/mp3;base64,${audioBase64}`,
     });
   } catch (error) {
     console.error("❌ Error in conversation:", error);
