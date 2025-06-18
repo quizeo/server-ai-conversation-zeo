@@ -1,39 +1,18 @@
 import axios from "axios";
 import dotenv from "dotenv";
-import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
-import { Readable } from "stream";
 
-// Load environment variables
 dotenv.config();
 
 export const handleConversation = async (req, res) => {
-  if (req.method === "OPTIONS") {
-    res.setHeader("Access-Control-Allow-Credentials", "true");
-    res.setHeader("Access-Control-Allow-Origin", "http://localhost:5173");
-    res.setHeader(
-      "Access-Control-Allow-Methods",
-      "GET,OPTIONS,PATCH,DELETE,POST,PUT"
-    );
-    res.setHeader(
-      "Access-Control-Allow-Headers",
-      "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization"
-    );
-    return res.status(200).end();
-  }
-
   try {
     const { prompt } = req.body;
     if (!prompt) {
       return res.status(400).json({ message: "Prompt is required" });
     }
 
-    // Validate required environment variables
     const openRouterApiKey = process.env.OPENROUTER_API_KEY;
-    if (!openRouterApiKey) {
-      return res.status(500).json({ message: "Missing OpenRouter API key." });
-    }
 
-    // 🧠 Call DeepSeek model via OpenRouter
+    // 🧠 Get AI-generated response from DeepSeek
     const openRouterResponse = await axios.post(
       "https://openrouter.ai/api/v1/chat/completions",
       {
@@ -48,46 +27,54 @@ export const handleConversation = async (req, res) => {
       }
     );
 
-    const aiResponse = openRouterResponse.data.choices[0]?.message?.content;
+    const aiResponse = openRouterResponse.data.choices[0].message.content;
     if (!aiResponse) {
       return res.status(500).json({ message: "No response from DeepSeek." });
     }
 
-    const elevenlabs = new ElevenLabsClient({
-      apiKey: process.env.ELEVENLABS_API_KEY, // Make sure this is set in your .env file
-    });
+    // 🔊 Convert AI response to speech using All Voice Lab
 
-    console.log(process.env.ELEVENLABS_API_KEY);
+    const response = await axios.get(
+      "https://api.allvoicelab.com/v1/voices/get_all_voices",
+      {
+        params: {
+          show_legacy: true,
+          language_code: "en",
+          gender: "male",
+        },
+        headers: {
+          "ai-api-key": process.env.ALLVOICELAB_API_KEY, // Make sure to put this in a .env file
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
-    const voices = await elevenlabs.voices.getAll();
-    console.log("Available voices:", voices.voices[0].voiceId);
+    console.log("Available voices:", response.data);
 
-    if (!voices || !voices.voices || voices.voices.length === 0) {
-      return res
-        .status(500)
-        .json({ message: "No voices available for this API key." });
-    }
-    const defaultVoiceId = voices.voices[0].voiceId;
+    const ttsResponse = await axios.post(
+      "https://api.allvoicelab.com/v1/text-to-speech/create",
+      {
+        text: aiResponse,
+        voice_id: "280800998262308871",
+        model_id: "tts-multilingual",
+      },
+      {
+        headers: {
+          "ai-api-key": process.env.ALLVOICELAB_API_KEY,
+          "Content-Type": "application/json",
+        },
+        responseType: "arraybuffer",
+      }
+    );
+    // console.log("Response from TTS API:", ttsResponse.data);
 
-    // 🗣️ Convert response text to speech using TTSMaker
-    const audio = await elevenlabs.textToSpeech.convert(defaultVoiceId, {
-      text: aiResponse,
-    });
+    const audioBase64 = Buffer.from(ttsResponse.data, "binary").toString(
+      "base64"
+    );
 
-    const stream = Readable.from(audio);
-    const chunks = [];
-    for await (const chunk of stream) {
-      chunks.push(chunk);
-    }
-    const buffer = Buffer.concat(chunks);
-
-    // Encode buffer to base64
-    const audioBase64 = buffer.toString("base64");
-
-    // 📤 Respond to frontend
     res.json({
       text: aiResponse,
-      audio: `data:audio/mp3;base64,${audioBase64}`,
+      audio: `data:audio/mpeg;base64,${audioBase64}`,
     });
   } catch (error) {
     console.error("❌ Error in conversation:", error);
