@@ -28,6 +28,7 @@ export const handleConversation = async (req, res) => {
     );
 
     const aiResponse = openRouterResponse.data.choices[0].message.content;
+    console.log(aiResponse);
     if (!aiResponse) {
       return res.status(500).json({ message: "No response from DeepSeek." });
     }
@@ -48,14 +49,13 @@ export const handleConversation = async (req, res) => {
         },
       }
     );
-
-    // console.log("Available voices:", response.data);
+    console.log("Available Voices:", response.data.voices[0].voice_id);
 
     const ttsResponse = await axios.post(
       "https://api.allvoicelab.com/v1/text-to-speech/create",
       {
         text: aiResponse,
-        voice_id: "280800998262308871",
+        voice_id: response.data.voices[0].voice_id,
         model_id: "tts-multilingual",
       },
       {
@@ -66,7 +66,8 @@ export const handleConversation = async (req, res) => {
         responseType: "arraybuffer",
       }
     );
-    // console.log("Response from TTS API:", ttsResponse.data);
+
+    console.log("TTS Response:", ttsResponse.data);
 
     const audioBase64 = Buffer.from(ttsResponse.data, "binary").toString(
       "base64"
