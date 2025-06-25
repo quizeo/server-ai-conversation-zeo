@@ -16,7 +16,7 @@ export const handleConversation = async (req, res) => {
     const openRouterResponse = await axios.post(
       "https://openrouter.ai/api/v1/chat/completions",
       {
-        model: "openai/gpt-3.5-turbo",
+        model: "deepseek/deepseek-r1",
         messages: [{ role: "user", content: prompt }],
       },
       {
